@@ -1,0 +1,16 @@
+@startuml
+' Диаграмма алгоритма counter_move
+title Counter Move Algorithm
+
+start
+:Получить предсказанный ход противника;
+if (Предсказанный ход = ROCK?) then (да)
+  :Вернуть PAPER;
+elseif (Предсказанный ход = PAPER?) then (да)
+  :Вернуть SCISSORS;
+elseif (Предсказанный ход = SCISSORS?) then (да)
+  :Вернуть ROCK;
+endif
+:При неопределенности вернуть ROCK;
+stop
+@enduml
