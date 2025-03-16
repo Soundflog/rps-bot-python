@@ -1,0 +1,51 @@
+@startuml SA_Китайская_стратегия
+title SA: Китайская стратегия
+start
+:НУ: Уст. вход: Рез,ПХ,ОКМ;
+if (Рез=win?) then (Да)
+  :Прим. Правл А;
+  if (ПХ=К?) then (Да)
+    :Контр=Н;
+  else (Нет)
+    if (ПХ=Н?) then (Да)
+      :Контр=Б;
+    else (Нет)
+      if (ПХ=Б?) then (Да)
+        :Контр=К;
+      endif
+    endif
+  endif
+else (Нет)
+  if (Рез=lose?) then (Да)
+    if (ОКМ=Да?) then (Да)
+      :Прим. Правл Б;
+      if (ПХ=К?) then (Да)
+        :Контр=Б;
+      else (Нет)
+        if (ПХ=Н?) then (Да)
+          :Контр=К;
+        else (Нет)
+          if (ПХ=Б?) then (Да)
+            :Контр=Н;
+          endif
+        endif
+      endif
+    else (Нет)
+      :Прим. Правл А;
+      if (ПХ=К?) then (Да)
+        :Контр=Н;
+      else (Нет)
+        if (ПХ=Н?) then (Да)
+          :Контр=Б;
+        else (Нет)
+          if (ПХ=Б?) then (Да)
+            :Контр=К;
+          endif
+        endif
+      endif
+    endif
+  endif
+endif
+:Вернуть Контр;
+stop
+@enduml

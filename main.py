@@ -1,205 +1,178 @@
-# Константы для фигур
 ROCK = 1  # Камень
 PAPER = 2  # Бумага
 SCISSORS = 3  # Ножницы
 
-# Глобальные переменные для хранения параметров турнира и состояния игры
-max_sets = 0
-wins_per_set = 0
-opponent_history = []  # История ходов противника
-transition = {}  # Марковская цепь: для каждого хода противника хранится статистика последующих ходов
-last_opponent_move = 0  # Последний ход противника
-move_count = 0  # Счётчик ходов в игре
-our_history = []  # История собственных ходов
+# Глобальные переменные для хранения состояния игры
+opponent_moves = []  # История ходов противника
+my_last_move = None  # Наш последний ход
+opponent_known_method = False  # Флаг: обнаружена детерминированная закономерность в ходах противника
 
 
 def set_parameters(set_count: int, wins_per_set_param: int) -> None:
     """
     Вызывается один раз перед началом игры.
-    Инициализирует параметры турнира и внутреннее состояние бота.
+    Сбрасываем историю и внутреннее состояние.
 
     :param set_count: Максимальное количество сетов в игре.
     :param wins_per_set_param: Требуемое количество побед в сете.
     """
-    global max_sets, wins_per_set, opponent_history, transition, last_opponent_move, move_count, our_history
-    max_sets = set_count
-    wins_per_set = wins_per_set_param
-    opponent_history = []
-    transition = {
-        ROCK: {ROCK: 0, PAPER: 0, SCISSORS: 0},
-        PAPER: {ROCK: 0, PAPER: 0, SCISSORS: 0},
-        SCISSORS: {ROCK: 0, PAPER: 0, SCISSORS: 0}
-    }
-    last_opponent_move = 0
-    move_count = 0
-    our_history = []
+    global opponent_moves, my_last_move, opponent_known_method
+    opponent_moves = []
+    my_last_move = None
+    opponent_known_method = False
 
 
 def on_game_start() -> None:
     """
     Вызывается один раз в начале игры.
-    Сбрасывает историю ходов и внутренние счётчики.
+    Здесь можно инициализировать состояние.
     """
-    global opponent_history, last_opponent_move, move_count, our_history
-    opponent_history = []
-    last_opponent_move = 0
-    move_count = 0
-    our_history = []
+    global opponent_moves, my_last_move, opponent_known_method
+    opponent_moves = []
+    my_last_move = None
+    opponent_known_method = False
 
 
-def counter_move(move: int) -> int:
+def determine_outcome(my_move: int, opp_move: int) -> str:
     """
-    Возвращает фигуру, побеждающую данную.
+    Определяет исход предыдущего хода.
+    Если наши и противниковы ходы равны, трактуем это как ничью (которая считается выигрышем для fallback).
 
-    :param move: Предполагаемый ход противника.
-    :return: Ход, который побеждает move.
+    :param my_move: Наш ход.
+    :param opp_move: Ход противника.
+    :return: "win", "tie" или "lose".
     """
-    if move == ROCK:
-        return PAPER  # Бумага побеждает Камень
-    elif move == PAPER:
-        return SCISSORS  # Ножницы побеждают Бумагу
-    elif move == SCISSORS:
-        return ROCK  # Камень побеждает Ножницы
-    return ROCK  # На всякий случай возвращаем Камень
-
-
-def overall_prediction(history: list) -> int:
-    """
-    Определяет наиболее часто встречающийся ход противника за всю игру.
-    Если истории нет, возвращает ROCK.
-
-    :param history: Список ходов противника.
-    :return: Предполагаемый следующий ход противника.
-    """
-    freq = {ROCK: 0, PAPER: 0, SCISSORS: 0}
-    for move in history:
-        freq[move] += 1
-    if not history:
-        return ROCK
-    # Если несколько вариантов равны, выбираем ROCK (так как случайный выбор заменяем на Камень)
-    predicted = ROCK
-    max_count = freq[ROCK]
-    if freq[PAPER] > max_count:
-        predicted = PAPER
-        max_count = freq[PAPER]
-    if freq[SCISSORS] > max_count:
-        predicted = SCISSORS
-    return predicted
-
-
-def markov_prediction(last_move: int) -> int:
-    """
-    Предсказывает следующий ход противника, используя статистику переходов (Марковская цепь).
-
-    :param last_move: Последний ход противника.
-    :return: Предполагаемый следующий ход противника.
-    """
-    if last_move == 0:
-        return overall_prediction(opponent_history)
-    counts = transition.get(last_move, {ROCK: 0, PAPER: 0, SCISSORS: 0})
-    total = counts[ROCK] + counts[PAPER] + counts[SCISSORS]
-    if total == 0:
-        return overall_prediction(opponent_history)
-    predicted = ROCK
-    max_count = counts[ROCK]
-    if counts[PAPER] > max_count:
-        predicted = PAPER
-        max_count = counts[PAPER]
-    if counts[SCISSORS] > max_count:
-        predicted = SCISSORS
-    return predicted
-
-
-def pattern_detection(history: list) -> int:
-    """
-    Ищет наибольший совпадающий суффикс в истории ходов противника.
-    Алгоритм проходит по возможным длинам паттерна от наибольшей до 1 и ищет,
-    встречался ли данный суффикс ранее. Если найден хотя бы один случай,
-    анализируется, какой ход чаще всего следовал за данным паттерном, и возвращается этот ход.
-
-    :param history: Список ходов противника.
-    :return: Предполагаемый следующий ход противника.
-    """
-    n = len(history)
-    # Если истории слишком мало, возвращаем общую статистику
-    if n < 2:
-        return overall_prediction(history)
-    # Ищем самый длинный суффикс, встречавшийся ранее
-    for pattern_length in range(n - 1, 0, -1):
-        pattern = history[-pattern_length:]
-        next_move_counts = {ROCK: 0, PAPER: 0, SCISSORS: 0}
-        found = False
-        # Ищем паттерн в истории, кроме последнего вхождения
-        for i in range(n - pattern_length):
-            if history[i:i + pattern_length] == pattern:
-                found = True
-                if i + pattern_length < n:
-                    next_move = history[i + pattern_length]
-                    next_move_counts[next_move] += 1
-        if found and (next_move_counts[ROCK] + next_move_counts[PAPER] + next_move_counts[SCISSORS] > 0):
-            predicted = ROCK
-            max_count = next_move_counts[ROCK]
-            if next_move_counts[PAPER] > max_count:
-                predicted = PAPER
-                max_count = next_move_counts[PAPER]
-            if next_move_counts[SCISSORS] > max_count:
-                predicted = SCISSORS
-            return predicted
-    return overall_prediction(history)
+    if my_move == opp_move:
+        return "tie"
+    # Условия выигрыша: камень побеждает ножницы, ножницы побеждают бумагу, бумага побеждает камень.
+    if (my_move == ROCK and opp_move == SCISSORS) or \
+            (my_move == SCISSORS and opp_move == PAPER) or \
+            (my_move == PAPER and opp_move == ROCK):
+        return "win"
+    return "lose"
 
 
 def choose(previous_opponent_choice: int) -> int:
     """
-    Функция выбора хода ботом с запутанной стратегией.
+    Выбор хода бота.
 
-    Алгоритм работы:
-      1. Обновление статистики: если ход противника известен,
-         обновляются история и статистика переходов.
-      2. Счётчик ходов (move_count) используется для переключения между тремя стратегиями:
-         - Если move_count % 3 == 0: используется чистый Марковский анализ.
-         - Если move_count % 3 == 1: применяется поиск паттернов в истории ходов.
-         - Если move_count % 3 == 2: используется комбинированный подход:
-             сравниваются результаты Марковского анализа и поиска паттернов;
-             если они совпадают, берётся этот результат, иначе применяется общая статистика.
-      3. После получения предсказанного хода противника выбирается фигура, которая его побеждает.
-      4. Если информации недостаточно для анализа, бот возвращает ROCK.
+    Алгоритм:
+    1. Если передан предыдущий ход противника (не 0), добавляем его в историю.
+    2. Пытаемся обнаружить детерминированную закономерность в поведении противника:
+         - Перебираем состояния с длиной от 3 до 1.
+         - Для каждого состояния составляем таблицу переходов и, если для текущего состояния всегда наблюдается один и тот же следующий ход,
+           делаем прогноз.
+    3. Если предсказание найдено, выбираем ход, который побеждает предсказанный.
+    4. Если детерминированного правила нет, используем запасной выбор по Китайской стратегии:
+         - Если предыдущий ход закончился выигрышем или ничьёй:
+             • После Камня -> Ножницы
+             • После Ножниц -> Бумага
+             • После Бумаги -> Камень
+         - Если проигрыш, то:
+             • Если противник, по нашим данным, знает методику (opponent_known_method == True):
+                   - После Камня -> Бумага
+                   - После Ножниц -> Камень
+                   - После Бумаги -> Ножницы
+             • Иначе (противник не обнаружил закономерность) – ведём себя как при выигрыше.
+    5. Сохраняем наш выбор и возвращаем его.
 
     :param previous_opponent_choice: Ход противника в предыдущем раунде (0, если это первый ход).
-    :return: Код фигуры, которую выбирает бот (1 - Камень, 2 - Бумага, 3 - Ножницы).
+    :return: Код выбранной фигуры (1 - Камень, 2 - Бумага, 3 - Ножницы).
     """
-    global opponent_history, transition, last_opponent_move, move_count, our_history
+    global opponent_moves, my_last_move, opponent_known_method
 
-    # Обновляем статистику, если ход противника известен
+    # Если не первый ход, сохраняем ход противника
     if previous_opponent_choice != 0:
-        if last_opponent_move != 0:
-            transition[last_opponent_move][previous_opponent_choice] += 1
-        opponent_history.append(previous_opponent_choice)
-        last_opponent_move = previous_opponent_choice
+        opponent_moves.append(previous_opponent_choice)
 
-    move_count += 1
+    predicted_move = None
 
-    # Выбор стратегии в зависимости от счётчика ходов
-    if move_count % 3 == 0:
-        predicted = markov_prediction(last_opponent_move)
-    elif move_count % 3 == 1:
-        predicted = pattern_detection(opponent_history)
-    else:  # move_count % 3 == 2
-        pred_markov = markov_prediction(last_opponent_move)
-        pred_pattern = pattern_detection(opponent_history)
-        if pred_markov == pred_pattern:
-            predicted = pred_markov
+    # Пытаемся обнаружить детерминированную закономерность в истории ходов противника
+    if opponent_moves:
+        for state_length in range(min(3, len(opponent_moves)), 0, -1):
+            mapping = {}
+            # Перебираем все состояния длиной state_length в истории
+            for i in range(len(opponent_moves) - state_length):
+                state = tuple(opponent_moves[i:i + state_length])
+                next_move = opponent_moves[i + state_length]
+                # Если состояние уже встречалось, проверяем, совпадает ли следующий ход
+                if state in mapping:
+                    if mapping[state] != next_move:
+                        mapping[state] = None  # Несогласованность в переходе – правило не детерминировано
+                else:
+                    mapping[state] = next_move
+            last_state = tuple(opponent_moves[-state_length:])
+            if last_state in mapping and mapping[last_state] is not None:
+                predicted_move = mapping[last_state]
+                opponent_known_method = True  # Обнаружено детерминированное поведение
+                break
+
+    if predicted_move is not None:
+        # Если прогноз сделан, выбираем ход, побеждающий предсказанный:
+        # Если противник играет Камень, наш выбор – Бумага;
+        # Если противник играет Бумагу, наш выбор – Ножницы;
+        # Если противник играет Ножницы, наш выбор – Камень.
+        if predicted_move == ROCK:
+            chosen = PAPER
+        elif predicted_move == PAPER:
+            chosen = SCISSORS
+        elif predicted_move == SCISSORS:
+            chosen = ROCK
         else:
-            predicted = overall_prediction(opponent_history)
+            chosen = ROCK  # запасной вариант
+    else:
+        # Запасной выбор по Китайской стратегии
+        # Если это первый ход, выбираем по умолчанию (например, Камень)
+        if my_last_move is None or previous_opponent_choice == 0:
+            chosen = ROCK
+        else:
+            # Определяем исход предыдущего раунда
+            outcome = determine_outcome(my_last_move, previous_opponent_choice)
+            # Ничья трактуем как выигрыш
+            if outcome == "tie":
+                outcome = "win"
 
-    # Выбираем ход, побеждающий предсказанный ход противника
-    my_choice = counter_move(predicted)
-    our_history.append(my_choice)
-    return my_choice
+            if outcome == "win":
+                # При выигрыше/ничье:
+                # После Камня -> Ножницы, После Ножниц -> Бумага, После Бумаги -> Камень
+                if my_last_move == ROCK:
+                    chosen = SCISSORS
+                elif my_last_move == SCISSORS:
+                    chosen = PAPER
+                elif my_last_move == PAPER:
+                    chosen = ROCK
+                else:
+                    chosen = ROCK
+            else:  # outcome == "lose"
+                if opponent_known_method:
+                    # Противник, видимо, знает методику – меняем стратегию:
+                    # После Камня -> Бумага, После Ножниц -> Камень, После Бумаги -> Ножницы
+                    if my_last_move == ROCK:
+                        chosen = PAPER
+                    elif my_last_move == SCISSORS:
+                        chosen = ROCK
+                    elif my_last_move == PAPER:
+                        chosen = SCISSORS
+                    else:
+                        chosen = ROCK
+                else:
+                    # Если противник не проявил детерминированного поведения – действуем как при выигрыше
+                    if my_last_move == ROCK:
+                        chosen = SCISSORS
+                    elif my_last_move == SCISSORS:
+                        chosen = PAPER
+                    elif my_last_move == PAPER:
+                        chosen = ROCK
+                    else:
+                        chosen = ROCK
+
+    my_last_move = chosen
+    return chosen
 
 
 def on_game_end() -> None:
     """
     Вызывается один раз в конце игры.
-    Здесь можно добавить финальную обработку или логирование статистики.
+    Здесь можно выполнить очистку или логирование.
     """
     pass

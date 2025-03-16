@@ -1,0 +1,68 @@
+@startuml
+title Дерево решений (глубина 3), первый ход = К
+
+' Для наглядности можно добавить стилизацию
+skinparam linetype ortho
+skinparam ranksep 40
+skinparam nodesep 40
+
+' Стартовая псевдовершина
+[*] --> K : старт
+
+' Первый уровень (после 1-го раунда)
+K --> K1v : в
+K --> K1p : п
+K --> K1n : н
+
+K1v: С: Ножницы -- Х:  
+' Второй уровень (после 2-го раунда)
+K1v --> K2vv : в
+K1v --> K2vp : п
+K1v --> K2vn : н
+
+K1p --> K2pv : в
+K1p --> K2pp : п
+K1p --> K2pn : н
+
+K1n --> K2nv : в
+K1n --> K2np : п
+K1n --> K2nn : н
+
+' Третий уровень (после 3-го раунда)
+K2vv --> K3vvv : в
+K2vv --> K3vvp : п
+K2vv --> K3vvn : н
+
+K2vp --> K3vpv : в
+K2vp --> K3vpp : п
+K2vp --> K3vpn : н
+
+K2vn --> K3vnv : в
+K2vn --> K3vnp : п
+K2vn --> K3vnn : н
+
+K2pv --> K3pvv : в
+K2pv --> K3pvp : п
+K2pv --> K3pvn : н
+
+K2pp --> K3ppv : в
+K2pp --> K3ppp : п
+K2pp --> K3ppn : н
+
+K2pn --> K3pnv : в
+K2pn --> K3pnp : п
+K2pn --> K3pnn : н
+
+K2nv --> K3nvv : в
+K2nv --> K3nvp : п
+K2nv --> K3nvn : н
+
+K2np --> K3npv : в
+K2np --> K3npp : п
+K2np --> K3npn : н
+
+K2nn --> K3nnv : в
+K2nn --> K3nnp : п
+K2nn --> K3nnn : н
+
+@enduml
