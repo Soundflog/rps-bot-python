@@ -1,0 +1,37 @@
+@startuml SA_Опред_исход
+title SA: Опред. исход
+start
+:НУ: Уст. ПХ, ПХС;
+if (ПХ = ПХС?) then (Да)
+  :Исх = tie;
+  :Вернуть исх;
+  stop
+endif
+if (ПХ = К?) then (Да)
+  if (ПХС = Н?) then (Да)
+    :Исх = win;
+  else (Нет)
+    :Исх = lose;
+  endif
+  :Вернуть исх;
+  stop
+endif
+if (ПХ = Б?) then (Да)
+  if (ПХС = К?) then (Да)
+    :Исх = win;
+  else (Нет)
+    :Исх = lose;
+  endif
+  :Вернуть исх;
+  stop
+endif
+if (ПХ = Н?) then (Да)
+  if (ПХС = Б?) then (Да)
+    :Исх = win;
+  else (Нет)
+    :Исх = lose;
+  endif
+  :Вернуть исх;
+  stop
+endif
+@enduml
